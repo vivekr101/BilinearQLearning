@@ -1,0 +1,7 @@
+QLearning using Bilinear Matrices.
+
+PLAN(Jan25)
+        * Write generic world simulator
+        * Write generic function to learn W Matrix
+        * Write world for Blood Management
+        * Write world for Wind Commitment
