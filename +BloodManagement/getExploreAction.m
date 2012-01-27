@@ -15,6 +15,7 @@ ObjFunc = -1*ones(ActionDim, 1);
 LB = zeros(ActionDim, 1);
 %Constraints' LHS for the action vector
 Constraints = [SuppliedFrom SupplyAggregator];
+
 %Constraints' RHS for the action vector
 ConstraintUpperBounds = state;
 [x, val, exitflag] = linprog(ObjFunc', Constraints', ConstraintUpperBounds', [], [], LB', [], [], options);
