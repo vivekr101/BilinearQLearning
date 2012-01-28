@@ -1,1 +1,0 @@
-function action = getAction(state)
