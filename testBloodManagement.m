@@ -15,4 +15,4 @@ options.getOptimalActions = @BloodManagement.getOptimalActions;
 
 samples = world.createSamples(nTrials, nEpsPerTrial, options);
 
-[W, inputs, targets] = world.getWFunction(samples, options, 0.9, 100);
+W = world.getWFunction(samples, options, 0.9, 100);

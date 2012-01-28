@@ -1,4 +1,4 @@
-function [W, transformedInputs, targetValues] = getWFunction(samples, params, ...
+function W = getWFunction(samples, params, ...
     discountFactor, nSteps, learningRate)
 %{
 Returns a W function that approximates the Q function.
@@ -17,7 +17,7 @@ Args:
         * rewards : column vector for the rewards
         * nextStates : matrix containing the next states, one per row.
     
-    params: a struct containing the following:
+    params: a struct containing (at least) the following:
         * getStateTransformations : function that takes as argument one or
         many state vectors, and returns the transformation for the states.
         * getActionTransformations : function that takes as argument one or
@@ -29,6 +29,11 @@ Args:
         The function should return:
             - a matrix of optimal actions, one row for each state in s
             - a column vector of rewards such that r(i) = s(i)*W*a(i)'
+    
+        OPTIONAL:
+        * useIntercept: should the W function use an intercept of its own?
+            False by default.
+        * regularize : use regularization? True by default.
 
     discountFactor: discount factor for the Q-function
 
@@ -49,6 +54,16 @@ if(~exist('learningRate','var'))
 end;
 
 nSamples = samples.nSamples;
+try
+    params.regularize;
+catch err
+    params.regularize = 1;
+end;
+try
+    params.useIntercept;
+catch err
+    params.useIntercept = 0;
+end;
 
 fprintf(1,'Using:\n');
 fprintf(1,'\tLearning Rate: %f\n', learningRate);
@@ -71,19 +86,48 @@ for i=1:nSamples
         1, transformedStateDim * transformedActionDim);
 end
 
-W = zeros(transformedStateDim, transformedActionDim);
+if params.useIntercept == 1
+    %Add a column of 1s for the intercept.
+    linRegInputs = [transformedInputs ones(nSamples, 1)];
+else
+    linRegInputs = transformedInputs;
+end
+
+if params.regularize == 1
+    B = eye(size(transformedInputs,2));
+    zTargets = zeros(size(B,1), 1); %useful later on.
+    if params.useIntercept ~= 1
+        %Not using an intercept, just tack on the regularization equations
+        linRegInputs = [linRegInputs; B];
+    else
+        %This means we're using an intercept - add a column of zeros to B.
+        linRegInputs = [linRegInputs; B zTargets];
+    end
+end
+
+W = rand(transformedStateDim, transformedActionDim);
+intercept = 0;
 
 fprintf(1,'Iteration: %6d', 1);
 for iStep = 1:nSteps
     fprintf(1,'\b\b\b\b\b\b%6d',iStep);
     [optimalActions, nextStateRewards] = params.getOptimalActions(transformedNextStates, W);
-    newEstimate = immediateRewards + nextStateRewards;
+    newEstimate = immediateRewards + discountFactor*(nextStateRewards + intercept);
     oldEstimate = diag(transformedStates * W * transformedActions');
     targetValues = (1 - learningRate)*oldEstimate + learningRate * newEstimate;
-    %X = double(transformedInputs) \ double(targetValues);
-    X = linsolve(double(transformedInputs), double(targetValues));
-    W = reshape(X, transformedStateDim, transformedActionDim)
-    %k = waitforbuttonpress
+    if params.regularize == 1
+        targetValues = [targetValues; zTargets];
+    end
+    X = linRegInputs \ targetValues;
+    if params.useIntercept == 1
+        W = reshape(X(1:end-1), transformedStateDim, transformedActionDim);
+        intercept = X(end);
+    else
+        W = reshape(X, transformedStateDim, transformedActionDim);
+    end
 end
 fprintf(1,'\n');
+
+
+
 

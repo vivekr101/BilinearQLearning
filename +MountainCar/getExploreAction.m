@@ -9,3 +9,9 @@ Args:
 Returns:
     action: action to be taken, row vector.
 %}
+
+global acc;
+
+dec = rand(1,1);
+%Equal chance of going left, right or no acceleration.
+action = acc*((dec>0.66) - (dec<0.33));

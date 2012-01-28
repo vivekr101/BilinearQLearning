@@ -10,3 +10,15 @@ Args:
 Returns:
     nextStates: matrix of next states, one per row.
 %}
+
+global gravity;
+
+nextPos = states(:,1) + states(:,2);
+nextVelocity = states(:,2) + actions(:,1) + gravity*cos(3*states(:,1));
+
+nextVelocity(nextPos<-1.2) = 0;
+nextPos(nextPos<-1.2) = -1.2;
+nextVelocity(nextVelocity<-0.07) = -0.07;
+nextVelocity(nextVelocity>0.07) = 0.07;
+
+nextStates = [nextPos nextVelocity];
