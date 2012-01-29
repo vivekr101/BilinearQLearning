@@ -109,21 +109,30 @@ W = rand(transformedStateDim, transformedActionDim);
 intercept = 0;
 
 fprintf(1,'Iteration: %6d', 1);
+targetValues = zeros(size(linRegInputs,1), 1);
+maxWs = zeros(nSteps, 1);
 for iStep = 1:nSteps
     fprintf(1,'\b\b\b\b\b\b%6d',iStep);
     [optimalActions, nextStateRewards] = params.getOptimalActions(transformedNextStates, W);
     if(size(nextStateRewards,1) ~= size(transformedNextStates, 1) ...
             || size(optimalActions,1) ~= size(transformedNextStates, 1))
         fprintf(1,'Invalid optimal actions, quitting.\n');
+        maxWs(iStep, 1) = max(max(W));
+        maxWs(1,1)
+        maxWs(2)
+        maxWs(3)
+        maxWs(4:iStep,1)
         W = W*0;
         return;
     end
     newEstimate = immediateRewards + discountFactor*(nextStateRewards + intercept);
     oldEstimate = diag(transformedStates * W * transformedActions');
-    targetValues = (1 - learningRate)*oldEstimate + learningRate * newEstimate;
+    targetValues(1:nSamples, 1) = (1 - learningRate)*oldEstimate + learningRate * newEstimate;
+    %{
     if params.regularize == 1
         targetValues = [targetValues; zTargets];
     end
+    %}
     X = linRegInputs \ targetValues;
     if params.useIntercept == 1
         W = reshape(X(1:end-1), transformedStateDim, transformedActionDim);
@@ -131,6 +140,7 @@ for iStep = 1:nSteps
     else
         W = reshape(X, transformedStateDim, transformedActionDim);
     end
+    maxWs(iStep, 1) = max(max(W));
 end
 fprintf(1,'\n');
 
