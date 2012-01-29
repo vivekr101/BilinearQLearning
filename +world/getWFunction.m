@@ -112,6 +112,12 @@ fprintf(1,'Iteration: %6d', 1);
 for iStep = 1:nSteps
     fprintf(1,'\b\b\b\b\b\b%6d',iStep);
     [optimalActions, nextStateRewards] = params.getOptimalActions(transformedNextStates, W);
+    if(size(nextStateRewards,1) ~= size(transformedNextStates, 1) ...
+            || size(optimalActions,1) ~= size(transformedNextStates, 1))
+        fprintf(1,'Invalid optimal actions, quitting.\n');
+        W = W*0;
+        return;
+    end
     newEstimate = immediateRewards + discountFactor*(nextStateRewards + intercept);
     oldEstimate = diag(transformedStates * W * transformedActions');
     targetValues = (1 - learningRate)*oldEstimate + learningRate * newEstimate;

@@ -23,6 +23,10 @@ for iSample = 1:size(states,1)
     [x, val, exitflag] = linprog(ObjFunc', Constraints', states(iSample, :)', [], [], LB', [], [], options);
     if(exitflag ~= 0 && exitflag ~=1)
         fprintf(1,'\nCould not reach a solution.\n');
+        W
+        states(iSample, :)
+        actions = [];
+        rewards = [];
         return;
     end
     actions(iSample, :) = x';

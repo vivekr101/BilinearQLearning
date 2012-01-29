@@ -1,6 +1,8 @@
 global ReceiverDonor_Matrix SupplyAggregator SuppliedFrom;
 
 
+NCombinations = sum(sum(ReceiverDonor_Matrix));
+ActionDim = NCombinations * NWeeks;
 %%Define matrices that help specify the action vector
 
 %Specifies week-relative indices for a donor-receiver pair in the action
