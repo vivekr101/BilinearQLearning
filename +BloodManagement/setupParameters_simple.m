@@ -9,14 +9,14 @@ global NTypes NWeeks ReceiverDonor_Matrix ...
 
 %How many blood types and weeks?
 NTypes = 2;
-NWeeks = 1;
+NWeeks = 2;
 
 %Define the Receiver-Donor matrix; rows are donors, columns are receivers
 %Only constraint is each type must donate to itself.
 ReceiverDonor_Matrix = eye(2);
 
 %Define the Initial Distribution for 2 types 1 weeks; generated randomly.
-InitialDistribution = [0.5 0.5];
+InitialDistribution = [0.25 0.25 0.25 0.25];
 
 %Define the range of starting volume of blood
 InitialTotalVolume_Range = [1000 1100];

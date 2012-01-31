@@ -1,7 +1,7 @@
 clc;
-BloodManagement.setupParameters_simple();
+BloodManagement.setupParameters();
 nTrials = 2;
-nEpsPerTrial = 10;
+nEpsPerTrial = 100;
 
 options = {};
 options.getInitialState = @BloodManagement.getInitialState;
@@ -13,7 +13,7 @@ options.getStateTransformations = @BloodManagement.getStateTransformations;
 options.getActionTransformations = @BloodManagement.getActionTransformations;
 options.getOptimalActions = @BloodManagement.getOptimalActions;
 options.useIntercept = 1;
-options.regularize = 1;
+options.regularize = 100;
 
 samples = world.createSamples(nTrials, nEpsPerTrial, options);
 

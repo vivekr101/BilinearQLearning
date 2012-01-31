@@ -12,12 +12,12 @@ options.isGoalState = @MountainCar.isGoalState;
 options.getStateTransformations = @MountainCar.getStateTransformations;
 options.getActionTransformations = @MountainCar.getActionTransformations;
 options.getOptimalActions = @MountainCar.getOptimalActions;
-options.regularize = 1;
+options.regularize = 100;
 options.useIntercept = 1;
 
 
 %Create samples, get W, evaluate W...
-nEvals = 10;
+nEvals = 1;
 
 stats = zeros(nEvals, 2);
 for iEval = 1:nEvals
@@ -27,4 +27,3 @@ for iEval = 1:nEvals
 end
 
 mean(stats)
-stdev(stats)

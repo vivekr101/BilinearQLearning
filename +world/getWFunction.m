@@ -33,7 +33,7 @@ Args:
         OPTIONAL:
         * useIntercept: should the W function use an intercept of its own?
             False by default.
-        * regularize : use regularization? True by default.
+        * regularizationStrength : strength of regularization; 1 by default.
 
     discountFactor: discount factor for the Q-function
 
@@ -93,8 +93,8 @@ else
     linRegInputs = transformedInputs;
 end
 
-if params.regularize == 1
-    B = eye(size(transformedInputs,2));
+if params.regularize ~= 0
+    B = params.regularize*eye(size(transformedInputs,2));
     zTargets = zeros(size(B,1), 1); %useful later on.
     if params.useIntercept ~= 1
         %Not using an intercept, just tack on the regularization equations
@@ -111,6 +111,10 @@ intercept = 0;
 fprintf(1,'Iteration: %6d', 1);
 targetValues = zeros(size(linRegInputs,1), 1);
 maxWs = zeros(nSteps, 1);
+LB = double(-1.0*ones(transformedStateDim*transformedActionDim, 1));
+UB = double(1.0*ones(transformedStateDim*transformedActionDim, 1));
+options = optimset('Display','off');
+
 for iStep = 1:nSteps
     fprintf(1,'\b\b\b\b\b\b%6d',iStep);
     [optimalActions, nextStateRewards] = params.getOptimalActions(transformedNextStates, W);
@@ -118,22 +122,13 @@ for iStep = 1:nSteps
             || size(optimalActions,1) ~= size(transformedNextStates, 1))
         fprintf(1,'Invalid optimal actions, quitting.\n');
         maxWs(iStep, 1) = max(max(W));
-        maxWs(1,1)
-        maxWs(2)
-        maxWs(3)
-        maxWs(4:iStep,1)
-        W = W*0;
         return;
     end
     newEstimate = immediateRewards + discountFactor*(nextStateRewards + intercept);
     oldEstimate = diag(transformedStates * W * transformedActions');
     targetValues(1:nSamples, 1) = (1 - learningRate)*oldEstimate + learningRate * newEstimate;
-    %{
-    if params.regularize == 1
-        targetValues = [targetValues; zTargets];
-    end
-    %}
-    X = linRegInputs \ targetValues;
+    %X = linRegInputs \ targetValues;
+    X = lsqlin(double(linRegInputs), double(targetValues), [], [], [], [], double(LB), double(UB));
     if params.useIntercept == 1
         W = reshape(X(1:end-1), transformedStateDim, transformedActionDim);
         intercept = X(end);
