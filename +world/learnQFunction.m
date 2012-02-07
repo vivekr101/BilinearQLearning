@@ -82,6 +82,7 @@ model.T = [transformedStates transformedActions ones(samples.nSamples, 1)] \ sam
 
 %1b. Precompute [s a 1]*T
 estNextStates = [transformedStates transformedActions ones(samples.nSamples, 1)]*model.T;
+rmse = utils.rmse(estNextStates, samples.nextStates)
 diffsFromCenter = {};
 diffsFromV = {};
 for i = 1:params.M
@@ -100,13 +101,13 @@ model.V = zeros(params.M, 1);
 model.C = zeros(params.M, samples.stateDim);
 
 Var = samples.states' * samples.states;
-VarInv = inv(Var)
+VarInv = inv(Var);
 
 minVals = min(samples.states);
 diffVals = max(samples.states) - min(samples.states);
 
 model.C = repmat(minVals, params.M, 1) + rand(params.M, samples.stateDim) .* repmat(diffVals, params.M, 1);
-model.C
+model.C;
 
 for iModel = 1:params.M
     model.Winv{iModel} = VarInv;

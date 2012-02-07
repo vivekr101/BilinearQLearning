@@ -56,7 +56,7 @@ getExploreAction = params.getExploreAction;
 getNextState = params.getNextState;
 getReward = params.getReward;
 isGoalState = params.isGoalState;
-isGoalState = params.isFailureState;
+isFailureState = params.isFailureState;
 
 %Get dimensions
 initialState = getInitialState();
@@ -80,9 +80,13 @@ fprintf(1,'Creating samples...');
 
 %Create the samples
 nSamples = 0;
-for nSamples = 1:nTrials*nEpsPerTrial
+while(1)
     currentState = getInitialState();
     for iEp = 1:nEpsPerTrial
+        if(nSamples >= nTrials*nEpsPerTrial)
+            break;
+        end
+        nSamples = nSamples + 1;
         samples.states(nSamples, :) = currentState;
         %Get the action, reward, next state
         action = getExploreAction(currentState);
@@ -97,6 +101,9 @@ for nSamples = 1:nTrials*nEpsPerTrial
             break;
         end
         currentState = samples.nextStates(nSamples, :);
+    end
+    if(nSamples >= nTrials*nEpsPerTrial)
+            break;
     end
 end
 
