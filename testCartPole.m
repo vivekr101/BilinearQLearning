@@ -22,11 +22,12 @@ nTrials = 1;
 nEpsPerTrial = 100;
 samples = world.createSamplesWFailure(nTrials, nEpsPerTrial, params);
 
-i = 10;
-while(1)
+i = 1;
+while(i<4)
     model = world.learnQFunction(samples, params);
     CartPole.getOptimalActionsQF(model,CartPole.getStateTransformations([0 0 0 0]))
     samples = world.createSamplesWFailure(nTrials, nEpsPerTrial, params, model);
+    i = i+1;
     %CartPole.showSteps(model);
     %k = waitforbuttonpress;
 end

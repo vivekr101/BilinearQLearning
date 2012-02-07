@@ -36,5 +36,8 @@ new_theta = theta + Tau * theta_dot;
 new_theta_dot = theta_dot + Tau * thetaacc;
 
 %new_theta = acos(cos(new_theta));
-
+new_x_dot(new_x<-2.4) = 0;
+new_x_dot(new_x>2.4) = 0;
+new_x(new_x<-2.4) = -2.4;
+new_x(new_x>2.4) = 2.4;
 nextStates = [new_x, new_x_dot, new_theta, new_theta_dot];

@@ -144,9 +144,12 @@ for iStep = 1:params.nSteps
         %size of diffsFromCenter{iModel}: nSamples x stateDim; size of
         diffsFromCenter{iModel} = estNextStates - repmat(model.C(iModel, :),samples.nSamples, 1);
         %%2d size of diffsFromV{iModel}: nSamples x 1
+        diffsFromV{iModel} = currentEstimates - repmat(model.V(iModel),samples.nSamples, 1);
     end
-    %size of distancesFromCenter: nSamples x 1
+    %size of distancesFromCenter: nSamples x M
     distancesFromCenter = world.distanceFunction(diffsFromCenter);
+    %size of distancesFromV: nSamples x M
+    distancesFromV = world.distanceFunction(diffsFromV);
     
     for iModel = 1:params.M
         %%2e - Update!
@@ -155,13 +158,14 @@ for iStep = 1:params.nSteps
 
         %Update C
         %centerErrors = mean(repmat(distancesFromCenter(:,iModel), 1, samples.stateDim).*estNextStates)...
-        %    - model.C(iModel, :);
-        centerErrors = repmat(distancesFromCenter(:,iModel), 1, samples.stateDim).*diffsFromCenter{i};
+        %   - model.C(iModel, :);
+        centerErrors = repmat(distancesFromV(:,iModel), 1, samples.stateDim).*diffsFromCenter{iModel};
         model.C(iModel, :) = model.C(iModel, :) + learningRate*mean(centerErrors);
         
         %Update Winv
-        centerErrors = repmat(distancesFromCenter(:,iModel), 1, samples.stateDim).*diffsFromCenter{i};
-        Werr = centerErrors' * centerErrors;
+        %centerErrors = repmat(distancesFromCenter(:,iModel), 1, samples.stateDim).*diffsFromCenter{iModel};
+        %Werr = centerErrors' * centerErrors;
+        Werr = diffsFromCenter{iModel}' * diffsFromCenter{iModel};
         model.Winv{iModel} = inv( inv(model.Winv{iModel}) + learningRate*Werr);
     end
     %model.C

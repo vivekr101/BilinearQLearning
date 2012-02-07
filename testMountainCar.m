@@ -42,8 +42,8 @@ params.getActionTransformations = @MountainCar.getActionTransformations;
 params.getOptimalAction = @MountainCar.getOptimalAction;
 params.M = 10;
 params.discountFactor = 0.9;
-params.nSteps = 150;
+params.nSteps = 70;
 samples = world.createSamples(nTrials, nEpsPerTrial, params);
 
 model = world.learnQFunction(samples, params);
-[avg_cycles, successCount, output]=MountainCar.evaluateQF(model,200);
+[avg_cycles, successCount, output]=MountainCar.evaluateQF(model,100);
