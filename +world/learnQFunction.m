@@ -78,7 +78,10 @@ transformedNextStates = params.getStateTransformations(samples.nextStates);
 transformedActions = params.getActionTransformations(samples.actions);
 
 %1a. Get the transfer matrix
+%output = samples.nextStates;
+%output(:,3) = cos(output(:,3));
 model.T = [transformedStates transformedActions ones(samples.nSamples, 1)] \ samples.nextStates;
+%model.T = [transformedStates transformedActions ones(samples.nSamples, 1)] \ output;
 
 %1b. Precompute [s a 1]*T
 estNextStates = [transformedStates transformedActions ones(samples.nSamples, 1)]*model.T;
@@ -107,7 +110,7 @@ minVals = min(samples.states);
 diffVals = max(samples.states) - min(samples.states);
 
 model.C = repmat(minVals, params.M, 1) + rand(params.M, samples.stateDim) .* repmat(diffVals, params.M, 1);
-model.C;
+model.C
 
 for iModel = 1:params.M
     model.Winv{iModel} = VarInv;
@@ -151,9 +154,10 @@ for iStep = 1:params.nSteps
         model.V(iModel) = model.V(iModel) + learningRate*sum(distancesFromCenter(:, iModel) .* errors);
 
         %Update C
-        centerErrors = mean(repmat(distancesFromCenter(:,iModel), 1, samples.stateDim).*estNextStates)...
-            - model.C(iModel, :);
-        model.C(iModel, :) = model.C(iModel, :) + learningRate*(centerErrors);
+        %centerErrors = mean(repmat(distancesFromCenter(:,iModel), 1, samples.stateDim).*estNextStates)...
+        %    - model.C(iModel, :);
+        centerErrors = repmat(distancesFromCenter(:,iModel), 1, samples.stateDim).*diffsFromCenter{i};
+        model.C(iModel, :) = model.C(iModel, :) + learningRate*mean(centerErrors);
         
         %Update Winv
         centerErrors = repmat(distancesFromCenter(:,iModel), 1, samples.stateDim).*diffsFromCenter{i};

@@ -1,7 +1,5 @@
 clc;
 CartPole.setupParameters();
-nTrials = 3;
-nEpsPerTrial = 1000;
 
 
 params = {};
@@ -14,9 +12,21 @@ params.isFailureState = @CartPole.isFailureState;
 params.getStateTransformations = @CartPole.getStateTransformations;
 params.getActionTransformations = @CartPole.getActionTransformations;
 params.getOptimalAction = @CartPole.getOptimalActionsQF;
-params.M = 50;
+params.getGoalState = @CartPole.getGoalState;
+params.hintToGoal = 0.05;
+params.M = 10;
 params.discountFactor = 0.9;
-params.nSteps = 300;
+params.nSteps = 100;
+
+nTrials = 1;
+nEpsPerTrial = 100;
 samples = world.createSamplesWFailure(nTrials, nEpsPerTrial, params);
 
-model = world.learnQFunction(samples, params);
+i = 10;
+while(1)
+    model = world.learnQFunction(samples, params);
+    CartPole.getOptimalActionsQF(model,CartPole.getStateTransformations([0 0 0 0]))
+    samples = world.createSamplesWFailure(nTrials, nEpsPerTrial, params, model);
+    %CartPole.showSteps(model);
+    %k = waitforbuttonpress;
+end

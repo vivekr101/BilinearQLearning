@@ -9,7 +9,7 @@ Args:
 x = abs(state(1,1));
 
 %Difficult version: bounded at [-2.4, 2.4];
-%out = (x > 2.4);
+out = (x > 2.4);
 
 %Easy version
-out = zeros(size(state,1),1);
+%out = zeros(size(state,1),1);

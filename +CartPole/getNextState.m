@@ -14,7 +14,7 @@ Returns:
     nextStates: matrix of next states, one per row.
 %}
 
-global g Mass_Pole Total_Mass Length PoleMass_Length Tau Fourthirds;
+global g Mass_Pole Total_Mass Length PoleMass_Length Tau Fourthirds xMin xMax;
 
 x = states(:,1);
 x_dot = states(:,2);
@@ -34,5 +34,7 @@ new_x = x + Tau * x_dot;
 new_x_dot = x_dot + Tau * xacc;
 new_theta = theta + Tau * theta_dot;
 new_theta_dot = theta_dot + Tau * thetaacc;
+
+%new_theta = acos(cos(new_theta));
 
 nextStates = [new_x, new_x_dot, new_theta, new_theta_dot];

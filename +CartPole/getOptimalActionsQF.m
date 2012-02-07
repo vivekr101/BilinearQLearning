@@ -13,9 +13,19 @@ Returns:
 %}
 
 global Force_Mag;
+
 nStates = size(states,1);
 optimalActions = zeros(nStates, model.actionDim);
 nextStateValues = zeros(nStates, 1);
+
+for i = 1:nStates
+    optfun = CartPole.findQValue(model, states(i, :));
+    [x,v] = fminbnd(optfun, -Force_Mag, Force_Mag);
+    optimalActions(i,:) = x;
+    nextStateValues(i,:) = v;
+end
+
+%{
 
 estNextStates = zeros(nStates, model.stateDim, 3);
 estNextStates(:, :, 1) = [states -Force_Mag*ones(nStates, 1) ones(nStates, 1)]*model.T;
@@ -38,3 +48,4 @@ end
 
 [nextStateValues, optimalActions] = max(qValues, [], 2);
 optimalActions = (optimalActions-2)*Force_Mag;
+%}
