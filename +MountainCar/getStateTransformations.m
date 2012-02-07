@@ -13,6 +13,7 @@ global xMin xMax vMin vMax xMean vMean;
 
 x = states(:,1);
 v = states(:,2);
-xNorm = (x-xMean)/(xMax-xMean);
-vNorm = (v-vMean)/(vMax-vMean);
-transformedStates =[xNorm vNorm xNorm.^2 xNorm.*vNorm vNorm.^2 xNorm.^3];
+%xNorm = (x-xMean)/(xMax-xMean);
+%vNorm = (v-vMean)/(vMax-vMean);
+%transformedStates =[xNorm vNorm xNorm.^2 xNorm.*vNorm vNorm.^2 xNorm.^3];
+transformedStates = [x v cos(3*x)];

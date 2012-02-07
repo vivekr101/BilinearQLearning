@@ -9,4 +9,4 @@ Returns:
     transformedActions: matrix of transformed action vectors, one per row
 %}
 
-transformedActions = [actions/0.001 ones(size(actions,1),1)];
+transformedActions = actions;

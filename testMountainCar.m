@@ -3,6 +3,7 @@ MountainCar.setupParameters();
 nTrials = 800;
 nEpsPerTrial = 1;
 
+%{
 options = {};
 options.getInitialState = @MountainCar.getInitialState;
 options.getExploreAction = @MountainCar.getExploreAction;
@@ -27,3 +28,22 @@ for iEval = 1:nEvals
 end
 
 mean(stats)
+%}
+
+
+params = {};
+params.getInitialState = @MountainCar.getInitialState;
+params.getExploreAction = @MountainCar.getExploreAction;
+params.getNextState = @MountainCar.getNextState;
+params.getReward = @MountainCar.getReward_Simple;
+params.isGoalState = @MountainCar.isGoalState;
+params.getStateTransformations = @MountainCar.getStateTransformations;
+params.getActionTransformations = @MountainCar.getActionTransformations;
+params.getOptimalAction = @MountainCar.getOptimalAction;
+params.M = 10;
+params.discountFactor = 0.9;
+params.nSteps = 150;
+samples = world.createSamples(nTrials, nEpsPerTrial, params);
+
+model = world.learnQFunction(samples, params);
+[avg_cycles, successCount, output]=MountainCar.evaluateQF(model,200);
