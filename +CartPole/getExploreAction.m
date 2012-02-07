@@ -9,3 +9,11 @@ Args:
 Returns:
     action: action to be taken, row vector.
 %}
+
+global Force_Mag;
+
+nStates = size(states, 1);
+
+dec = rand(nStates,1);
+%Equal chance of going left, right or no acceleration.
+action = Force_Mag*((dec>0.66) - (dec<0.33));
