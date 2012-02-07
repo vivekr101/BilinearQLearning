@@ -1,4 +1,4 @@
-function action = getExploreAction(state)
+function action = getExploreAction(states)
 %{
 Function that is used for getting exploratory actions, used to create
 training samples.

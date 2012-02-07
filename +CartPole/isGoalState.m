@@ -11,4 +11,8 @@ v = abs(state(1,2));
 t = abs(state(1,3));
 tdot = abs(state(1,4));
 
-out = (x < 0.05) && (v < 0.05) && (t < 0.05) && (tdot < 0.05);
+%Difficult version: x-position at center!
+% out = (x < 0.05) && (v < 0.05) && (t < 0.05) && (tdot < 0.05);
+
+%Easy version: no x-position constraint
+out = (v < 0.05) && (t < 0.05) && (tdot < 0.05);

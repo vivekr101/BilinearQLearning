@@ -22,7 +22,7 @@ theta = states(:,3);
 theta_dot = states(:,4);
 nStates = size(states, 1);
 
-temp = (force + PoleMass_Length *theta_dot .* theta_dot .* sin(theta))/ Total_Mass;
+temp = (actions + PoleMass_Length *theta_dot .* theta_dot .* sin(theta))/ Total_Mass;
 
 denom = Length * (Fourthirds*ones(nStates,1) - Mass_Pole * cos(theta) .* cos(theta) / Total_Mass);
 thetaacc = (g * sin(theta) - cos(theta).* temp) ./ denom;

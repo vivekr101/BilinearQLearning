@@ -1,4 +1,4 @@
-function [rewards, actions] = getOptimalActionsQF(model, states)
+function [nextStateValues, optimalActions] = getOptimalActionsQF(model, states)
 %{
 Returns optimal actions for the specified states and the Q function
 estimate.
