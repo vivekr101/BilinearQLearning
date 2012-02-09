@@ -1,2 +1,2 @@
 function err = rmse(A,B)
-err = mean(mean((A-B).^2));
+err = mean(sum((A-B).^2,2));

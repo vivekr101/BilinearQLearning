@@ -28,7 +28,7 @@ end
 for iAction = 1:3
     for iModel = 1:model.M
         diffsFromCenter = estNextStates(:, :, iAction) - modelCenters(:, :, iModel);
-        exponents = diag(diffsFromCenter * model.Winv{iModel} * diffsFromCenter');
+        exponents = diag(diffsFromCenter * model.W(:,:,iModel) * diffsFromCenter');
         qValues(:, iAction) = qValues(:, iAction) + model.V(iModel)*exp(-exponents);
     end
 end

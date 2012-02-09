@@ -46,4 +46,4 @@ params.nSteps = 70;
 samples = world.createSamples(nTrials, nEpsPerTrial, params);
 
 model = world.learnQFunction(samples, params);
-[avg_cycles, successCount, output]=MountainCar.evaluateQF(model,100);
+[avg_cycles, successCount, output]=MountainCar.evaluateQF(model,50);

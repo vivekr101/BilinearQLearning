@@ -56,20 +56,6 @@ Returns:
 How to learn:
 Q(s,a) = \sum_{i=1}^M V_i*exp( -([s a]T - C_i)*W_i*([s a]T - C_i)' )
 
-1. a. Pre-compute: T s.t. [s a 1]T = s' is minimized.
-   b. Also pre-compute [s a 1]T
-   c. Initialize Winv_i, C_i, V_i
-2. For each of nSteps steps:
-    a. Calculate Q_d = current Q(s_d, a_d) for all samples.
-    b. Calculate Q'_d = max_u Q(s_d',u) for all samples.
-    c. Calculate e1i_d = dist([s_d a_d 1]T, C_i) for all samples from each center.
-    d. Calculate e2i_d = dist(Q(s_d, a_d), V_i) for all samples from each center.
-    e. Update (lR being learningRate, dF being discountFactor):
-        * V_i <- V_i + lR*( \sum_{d=1}^D( e1i_d*(r_d + dF*Q'_d) - Q_d) )
-        * C_i <- C_i + lR*( \sum_{d=1}^D( e2i_d*[s a 1]T - C_i) ) 
-        * inv(Winv_i) <- inv(Winv_i) + lR*( \sum_{d=1}^D( e2i_d*([s a 1]T - C_i)'*([s a 1]T - C_i) ) ) 
-3. ???
-4. Profit!
 %}
 
 model = {};
@@ -78,99 +64,92 @@ transformedNextStates = params.getStateTransformations(samples.nextStates);
 transformedActions = params.getActionTransformations(samples.actions);
 
 %1a. Get the transfer matrix
-%output = samples.nextStates;
-%output(:,3) = cos(output(:,3));
-model.T = [transformedStates transformedActions ones(samples.nSamples, 1)] \ samples.nextStates;
-%model.T = [transformedStates transformedActions ones(samples.nSamples, 1)] \ output;
-
-%1b. Precompute [s a 1]*T
-estNextStates = [transformedStates transformedActions ones(samples.nSamples, 1)]*model.T;
+inputs = [transformedStates transformedActions ones(samples.nSamples, 1)];
+model.T = inputs \ samples.nextStates;
+estNextStates = inputs * model.T;
 rmse = utils.rmse(estNextStates, samples.nextStates)
-diffsFromCenter = {};
-diffsFromV = {};
-for i = 1:params.M
-    diffsFromCenter{i} = estNextStates;
-    diffsFromV{i} = zeros(samples.nSamples, 1);
-end
 
-%1c. Initialize!
+%Initialize
 model.M = params.M;
-model.stateDim = samples.stateDim;
-model.actionDim = samples.actionDim;
-learningRate = 1.0;
-decayFactor = 10*params.nSteps;
-model.Winv = {};
-model.V = zeros(params.M, 1);
-model.C = zeros(params.M, samples.stateDim);
-
-Var = samples.states' * samples.states;
-VarInv = inv(Var);
-
 minVals = min(samples.states);
 diffVals = max(samples.states) - min(samples.states);
-
-model.C = repmat(minVals, params.M, 1) + rand(params.M, samples.stateDim) .* repmat(diffVals, params.M, 1);
+model.C = repmat(minVals, model.M, 1)...
+    + rand(model.M, samples.stateDim).*repmat(diffVals, model.M, 1);
 model.C
-
-for iModel = 1:params.M
-    model.Winv{iModel} = VarInv;
+model.W = zeros(samples.stateDim, samples.stateDim, model.M);
+for iModel = 1:model.M
+    model.W(:, :, iModel) = eye(samples.stateDim)*0.001;
 end
+model.V = zeros(1, model.M);
+model.stateDim = samples.stateDim;
+model.actionDim = samples.actionDim;
+contributions = zeros(samples.nSamples, model.M);
+currentEstimates = zeros(samples.nSamples, 1);
+learningRate = 0.05;
+alpha = 1;
+decayFactor = 10*params.nSteps;
+diffFromCenter = {};
+iStep = 1;
+learningRate = 1/(decayFactor + iStep);%
+oldRMSE = 0;
+%for iStep = 1:params.nSteps
+while(1)
+    newModel = model;
+    nIter = 1;
+        %Calculate future estimates
+        [nextStateValues, actions] = params.getOptimalAction(model, transformedNextStates);
+        newEstimates = samples.rewards + params.discountFactor*nextStateValues;
 
-fprintf(1, 'Starting Q-Learning for %d steps\n', params.nSteps);
-fprintf(1, 'Using: \n');
-fprintf(1, '\t# of Models: %d\n', params.M);
-fprintf(1, '\tDiscount Factor: %f\n', params.discountFactor);
+        %[model.C model.V']'wGrad = diag(mean(diffFromCenter{iModel}.*biasedDiffs),0);
+        %Calculate current-state gaussian-contributions
+        currentEstimates = zeros(samples.nSamples, 1);
+        for iModel = 1:model.M
+            diffFromCenter{iModel} = estNextStates - repmat(model.C(iModel, :), samples.nSamples, 1);
+            exponents = diag(diffFromCenter{iModel} * model.W(:,:,iModel) *diffFromCenter{iModel}');
+            contributions(:, iModel) = exp(-exponents);
+            currentEstimates = currentEstimates + model.V(iModel) * contributions(:, iModel);
+        end
+        errors = repmat(newEstimates - currentEstimates, 1, model.M);
+        rmse = utils.rmse(newEstimates, currentEstimates);
+        contributionError = contributions .* errors;
 
-options = optimset('Display','notify','GradObj','Off','LargeScale','Off');
+        vGrad = mean(contributionError);
+        model.V = model.V + learningRate * 2 * vGrad;
 
-fprintf(1,'Iteration: %6d', 1);
-for iStep = 1:params.nSteps
-    fprintf(1,'\b\b\b\b\b\b%6d', iStep);
-    %iStep
-    
-    %%2a - Calculate current estimates
-    %size of currentEstimates: nSamples x 1
-    currentEstimates = world.calculateQValue(model, transformedStates, transformedActions);
-    
-    %%2b - Find optimal actions for next states
-    %size of nextStateValues, newEstimates and errors: nSamples x 1
-    [nextStateValues, optimalActions] = params.getOptimalAction(model, transformedNextStates);
-    newEstimates = samples.rewards + params.discountFactor*nextStateValues;
-    errors = newEstimates - currentEstimates;
-    
-    %%2c, 2d
-    for iModel = 1:params.M
-        %%2c - calculate distances of samples from centers
-        %size of diffsFromCenter{iModel}: nSamples x stateDim; size of
-        diffsFromCenter{iModel} = estNextStates - repmat(model.C(iModel, :),samples.nSamples, 1);
-        %%2d size of diffsFromV{iModel}: nSamples x 1
-        diffsFromV{iModel} = currentEstimates - repmat(model.V(iModel),samples.nSamples, 1);
-    end
-    %size of distancesFromCenter: nSamples x M
-    distancesFromCenter = world.distanceFunction(diffsFromCenter);
-    %size of distancesFromV: nSamples x M
-    distancesFromV = world.distanceFunction(diffsFromV);
-    
-    for iModel = 1:params.M
-        %%2e - Update!
-        %First update V
-        model.V(iModel) = model.V(iModel) + learningRate*sum(distancesFromCenter(:, iModel) .* errors);
-
-        %Update C
-        %centerErrors = mean(repmat(distancesFromCenter(:,iModel), 1, samples.stateDim).*estNextStates)...
-        %   - model.C(iModel, :);
-        centerErrors = repmat(distancesFromV(:,iModel), 1, samples.stateDim).*diffsFromCenter{iModel};
-        model.C(iModel, :) = model.C(iModel, :) + learningRate*mean(centerErrors);
+        for iModel = 1:model.M
+            biasedDiffs = model.V(iModel)*repmat(contributionError(:,iModel),1,samples.stateDim) .*...
+                (diffFromCenter{iModel}*model.W(:,:,iModel));
+            cGrad = mean(biasedDiffs);
+            model.C(iModel, :) = model.C(iModel, :) + learningRate * 4 * cGrad;
+            %wGrad = (diffFromCenter{iModel}'*biasedDiffs).*eye(samples.stateDim)/samples.nSamples;
+            wGrad = diag(mean(diffFromCenter{iModel}.*biasedDiffs),0);
+            model.W(:,:,iModel) = abs(model.W(:,:,iModel) + 2*learningRate * wGrad);
+        end
         
-        %Update Winv
-        %centerErrors = repmat(distancesFromCenter(:,iModel), 1, samples.stateDim).*diffsFromCenter{iModel};
-        %Werr = centerErrors' * centerErrors;
-        Werr = diffsFromCenter{iModel}' * diffsFromCenter{iModel};
-        model.Winv{iModel} = inv( inv(model.Winv{iModel}) + learningRate*Werr);
+    [iStep abs(oldRMSE - rmse) oldRMSE]
+    if(abs(oldRMSE - rmse) < 0.0001)
+        [nIter rmse];
+        break;
     end
-    %model.C
-    learningRate = 1/(1+decayFactor*iStep);
+    learningRate = 1/(decayFactor + iStep);%
+    oldRMSE = rmse;
+    iStep = iStep + 1;
 end
-fprintf(1,'\n');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
