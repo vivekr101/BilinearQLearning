@@ -89,7 +89,7 @@ fprintf(1,'Creating samples...');
 %Create the samples
 nSamples = 0;
 while(1)
-    currentState = getGoalState();
+    currentState = getInitialState();
     for iEp = 1:nEpsPerTrial
         if(nSamples >= nTrials*nEpsPerTrial*(1-params.hintToGoal))
             break;

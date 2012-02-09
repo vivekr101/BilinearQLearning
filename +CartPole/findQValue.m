@@ -6,7 +6,7 @@ function qValues = getval(action)
     estNextStates = [state action 1]*model.T;
     for iModel = 1:model.M
         diffFromCenter = estNextStates - model.C(iModel, :);
-        exponents = diag(diffFromCenter * model.Winv{iModel} * diffFromCenter');
+        exponents = diag(diffFromCenter * model.W(iModel) * diffFromCenter');
         qValues = qValues + model.V(iModel)*exp(-exponents);
     end
 end

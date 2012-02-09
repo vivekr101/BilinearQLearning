@@ -5,7 +5,7 @@ options = optimset('Display','notify','GradObj','Off','LargeScale','Off');
 while(true)
     clc;
     h=0;
-    state=[(rand(1,1)-0.5)*(xMax-xMin) + xMean 0];
+    %state=[(rand(1,1)-0.5)*(xMax-xMin) + xMean 0];
     state=[-acos(0)/3 0];
     while(true) 
         if(MountainCar.isGoalState(state)==1)  
