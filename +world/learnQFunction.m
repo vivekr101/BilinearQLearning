@@ -1,4 +1,4 @@
-function model = learnQFunction(samples, params)
+function model = learnQFunction(samples, params, model)
 %{
 Learns a Q-Function for the given data.
 
@@ -71,17 +71,21 @@ Q(s,a) = \sum_{i=1}^M V_i*exp( -([s a]T - C_i)*W_i*([s a]T - C_i)' )
 3. ???
 4. Profit!
 %}
+augmentModel = 0;
+if(exist('model','var'))
+    augmentModel = 1;
+else
+    model = {};
+end
 
-model = {};
 transformedStates = params.getStateTransformations(samples.states);
 transformedNextStates = params.getStateTransformations(samples.nextStates);
 transformedActions = params.getActionTransformations(samples.actions);
 
 %1a. Get the transfer matrix
-%output = samples.nextStates;
-%output(:,3) = cos(output(:,3));
-model.T = [transformedStates transformedActions ones(samples.nSamples, 1)] \ samples.nextStates;
-%model.T = [transformedStates transformedActions ones(samples.nSamples, 1)] \ output;
+if(augmentModel == 0)
+    model.T = [transformedStates transformedActions ones(samples.nSamples, 1)] \ samples.nextStates;
+end
 
 %1b. Precompute [s a 1]*T
 estNextStates = [transformedStates transformedActions ones(samples.nSamples, 1)]*model.T;
@@ -94,26 +98,29 @@ for i = 1:params.M
 end
 
 %1c. Initialize!
-model.M = params.M;
-model.stateDim = samples.stateDim;
-model.actionDim = samples.actionDim;
 learningRate = 1.0;
 decayFactor = 10*params.nSteps;
-model.Winv = {};
-model.V = zeros(params.M, 1);
-model.C = zeros(params.M, samples.stateDim);
 
-Var = samples.states' * samples.states;
-VarInv = inv(Var);
+if(augmentModel == 0)
+    model.M = params.M;
+    model.stateDim = samples.stateDim;
+    model.actionDim = samples.actionDim;
+    model.Winv = {};
+    model.V = zeros(params.M, 1);
+    model.C = zeros(params.M, samples.stateDim);
 
-minVals = min(samples.states);
-diffVals = max(samples.states) - min(samples.states);
+    Var = samples.states' * samples.states;
+    VarInv = inv(Var);
 
-model.C = repmat(minVals, params.M, 1) + rand(params.M, samples.stateDim) .* repmat(diffVals, params.M, 1);
-model.C
+    minVals = min(samples.states);
+    diffVals = max(samples.states) - min(samples.states);
 
-for iModel = 1:params.M
-    model.Winv{iModel} = VarInv;
+    model.C = repmat(minVals, params.M, 1) + rand(params.M, samples.stateDim) .* repmat(diffVals, params.M, 1);
+    model.C;
+    
+    for iModel = 1:params.M
+        model.Winv{iModel} = VarInv;
+    end
 end
 
 fprintf(1, 'Starting Q-Learning for %d steps\n', params.nSteps);
@@ -159,8 +166,8 @@ for iStep = 1:params.nSteps
         %Update C
         %centerErrors = mean(repmat(distancesFromCenter(:,iModel), 1, samples.stateDim).*estNextStates)...
         %   - model.C(iModel, :);
-        centerErrors = repmat(distancesFromV(:,iModel), 1, samples.stateDim).*diffsFromCenter{iModel};
-        model.C(iModel, :) = model.C(iModel, :) + learningRate*mean(centerErrors);
+        %centerErrors = repmat(distancesFromV(:,iModel), 1, samples.stateDim).*diffsFromCenter{iModel};
+        %model.C(iModel, :) = model.C(iModel, :) + learningRate*mean(centerErrors);
         
         %Update Winv
         %centerErrors = repmat(distancesFromCenter(:,iModel), 1, samples.stateDim).*diffsFromCenter{iModel};

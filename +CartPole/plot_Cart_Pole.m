@@ -15,6 +15,6 @@ pyp=[1.25 1.25+l*cos(theta)];
 plot(pxg,pyg,'k-',pxw1,pyw1,'k',pxw2,pyw2,'k',pxp,pyp,'r')
 axis([-6 6 0 6])
 line([0 action/10],[3 3]);
-text(-2,5,sprintf('%f\n%f\n%f\n%f',[xv,v, theta, td]));
-grid
+text(-2,5,sprintf('%f\n%f\n%f\n%f\n%f',[xv,v, theta, td, action]));
+%grid
 drawnow;

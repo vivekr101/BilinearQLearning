@@ -12,4 +12,4 @@ t = (cos(state(1,3)));
 tdot = abs(state(1,4));
 
 %Difficult version: x-position at center!
-out = (x < 0.05) && (t >= 0.99);
+out = (x < 0.05) && (t >= 0.9);
