@@ -15,12 +15,12 @@ params.getActionTransformations = @CartPole2.getActionTransformations;
 params.getOptimalAction = @CartPole2.getOptimalActionsQF;
 params.getGoalState = @CartPole2.getGoalState;
 params.hintToGoal = 0.02;
-params.M = 15;
+params.M = 10;
 params.discountFactor = 0.99;
 params.nSteps = 100;
 
 nTrials = 10;
-nEpsPerTrial = 100;
+nEpsPerTrial = 200;
 samples = world.createSamplesWFailure(nTrials, nEpsPerTrial, params);
 model = world.learnQFunction(samples, params);
 
