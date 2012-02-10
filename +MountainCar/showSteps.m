@@ -5,7 +5,7 @@ while(true)
     clc;
     h=0;
     state=[(rand(1,1)-0.5)*(xMax-xMin) + xMean 0];
-    state=[-0.632240 0];
+    state=[-0.4 0];
     while(true) 
         if(MountainCar.isGoalState(state)==1)  
             fprintf(1,'\n\nGoal State Reached.\n'); 

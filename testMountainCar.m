@@ -41,7 +41,7 @@ params.getStateTransformations = @MountainCar.getStateTransformations;
 params.getActionTransformations = @MountainCar.getActionTransformations;
 params.getOptimalAction = @MountainCar.getOptimalAction;
 params.M = 10;
-params.discountFactor = 0.9;
+params.discountFactor = 0.95;
 params.nSteps = 70;
 samples = world.createSamples(nTrials, nEpsPerTrial, params);
 

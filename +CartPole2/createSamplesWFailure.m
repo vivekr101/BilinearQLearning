@@ -1,8 +1,7 @@
 function samples = createSamples(...
 nTrials, ...
 nEpsPerTrial, ...
-params,...
-model)
+params)
 %{
 Creates samples for the world being simulated. It creates
 nTrials*nEpsPerTrial samples by running 'nTrials' trials.
@@ -33,11 +32,6 @@ args:
         * isFailureState: function handle that takes as argument a state and
         returns True if the state is a failure state. The current trial
         will quit if this is true.
-        * hintToGoal: % of state samples that will be taken from the goal
-        region.
-        * getGoalState: returns a goal state.
-    
-    model: model to use to explore the world.
 
 returns:
     samples: a struct containing the following:
@@ -61,10 +55,8 @@ getInitialState = params.getInitialState;
 getExploreAction = params.getExploreAction;
 getNextState = params.getNextState;
 getReward = params.getReward;
-getGoalState = params.getGoalState;
 isGoalState = params.isGoalState;
 isFailureState = params.isFailureState;
-useModel = exist('model','var');
 
 %Get dimensions
 initialState = getInitialState();
@@ -91,39 +83,6 @@ nSamples = 0;
 while(1)
     currentState = getInitialState();
     for iEp = 1:nEpsPerTrial
-        if(nSamples >= nTrials*nEpsPerTrial*(1-params.hintToGoal))
-            break;
-        end
-        nSamples = nSamples + 1;
-        samples.states(nSamples, :) = currentState;
-        %Get the action, reward, next state
-        action = getExploreAction(currentState);
-        if(useModel==1)
-                [reward, action] = CartPole2.getOptimalActionsQF(model,...
-                    CartPole2.getStateTransformations(currentState));
-        end
-        samples.actions(nSamples, :) = action;
-        samples.rewards(nSamples, 1) = getReward(currentState, action);
-        samples.nextStates(nSamples, :) = getNextState(currentState, action);
-        %Should we end this trial?
-        %if isGoalState(samples.nextStates(nSamples, :))==1
-        %    break;
-        %end
-        if isFailureState(samples.nextStates(nSamples, :))==1
-            break;
-        end
-        currentState = samples.nextStates(nSamples, :);
-    end
-    if(nSamples >= nTrials*nEpsPerTrial*(1-params.hintToGoal))
-            break;
-    end
-end
-
-fprintf(1,'%d left to make...',nTrials*nEpsPerTrial - nSamples);
-
-while(1)
-    currentState = getGoalState();
-    for iEp = 1:nEpsPerTrial
         if(nSamples >= nTrials*nEpsPerTrial)
             break;
         end
@@ -131,18 +90,13 @@ while(1)
         samples.states(nSamples, :) = currentState;
         %Get the action, reward, next state
         action = getExploreAction(currentState);
-        if(useModel==1)
-                [reward, action] = CartPole2.getOptimalActionsQF(model,...
-                    CartPole2.getStateTransformations(currentState));
-        end
         samples.actions(nSamples, :) = action;
         samples.rewards(nSamples, 1) = getReward(currentState, action);
         samples.nextStates(nSamples, :) = getNextState(currentState, action);
-        %Should we end this trial? We want to see if it goes _out_ of goal
-        %state now.
-        %if isGoalState(samples.nextStates(nSamples, :))==0
-        %    break;
-        %end
+        %Should we end this trial?
+        if isGoalState(samples.nextStates(nSamples, :))==1
+            break;
+        end
         if isFailureState(samples.nextStates(nSamples, :))==1
             break;
         end

@@ -1,4 +1,4 @@
-function model = learnQFunction(samples, params)
+function model = learnQFunction(samples, params, currentModel)
 %{
 Learns a Q-Function for the given data.
 
@@ -57,86 +57,121 @@ How to learn:
 Q(s,a) = \sum_{i=1}^M V_i*exp( -([s a]T - C_i)*W_i*([s a]T - C_i)' )
 
 %}
-
+createNewModel = 1;
 model = {};
+if(exist('currentModel','var'))
+    createNewModel = 0;
+    model = currentModel;
+end
 transformedStates = params.getStateTransformations(samples.states);
 transformedNextStates = params.getStateTransformations(samples.nextStates);
 transformedActions = params.getActionTransformations(samples.actions);
 
 %1a. Get the transfer matrix
 inputs = [transformedStates transformedActions ones(samples.nSamples, 1)];
-model.T = inputs \ samples.nextStates;
+if(createNewModel==1)
+    model.T = inputs \ samples.nextStates;
+end
 estNextStates = inputs * model.T;
 rmse = utils.rmse(estNextStates, samples.nextStates)
-
+estNextStates(:,1) = cos(estNextStates(:,1));
 %Initialize
-model.M = params.M;
-minVals = min(samples.states);
-diffVals = max(samples.states) - min(samples.states);
-model.C = repmat(minVals, model.M, 1)...
-    + rand(model.M, samples.stateDim).*repmat(diffVals, model.M, 1);
-model.C
-model.W = zeros(samples.stateDim, samples.stateDim, model.M);
-for iModel = 1:model.M
-    model.W(:, :, iModel) = eye(samples.stateDim)*0.001;
+if(createNewModel==1)
+    fprintf(1,'Making new model.\n');
+    model.M = params.M;
+    
+    tdVals = linspace(min(samples.states(:,2)), max(samples.states(:,2)),5);
+    tdVals = tdVals(2:end-1)';
+    tVals = linspace(-1,1,5)';
+    
+    %gm1 = gmdistribution.fit(samples.states(:,1), 1);
+    %gm2 = gmdistribution.fit(samples.states(:,2), 1);
+    %tVals = cos(random(gm1,5));
+    %tdVals = random(gm2,3);
+    model.C = [repmat(tVals,3,1), repmat(tdVals, 5, 1)];
+    
+    %{
+    minVals = min(samples.states);
+    minVals(1,1) = -1;
+    diffVals = max(samples.states) - min(samples.states);
+    diffVals(1,1) = 2;
+    
+    model.C = repmat(minVals, model.M, 1)...
+        + rand(model.M, samples.stateDim).*repmat(diffVals, model.M, 1);
+    model.C(model.M, :) = [1 0];
+    model.C
+    %}
+    
+    for iModel = 1:model.M
+        model.W(:, :, iModel) = eye(samples.stateDim)*0.01;
+    end
+    model.V = -2*ones(1, model.M);
+    model.stateDim = samples.stateDim;
+    model.actionDim = samples.actionDim;
 end
-model.V = zeros(1, model.M);
-model.stateDim = samples.stateDim;
-model.actionDim = samples.actionDim;
 contributions = zeros(samples.nSamples, model.M);
 currentEstimates = zeros(samples.nSamples, 1);
-learningRate = 0.05;
-alpha = 1;
-decayFactor = 10*params.nSteps;
+
+decayFactor = 100;
 diffFromCenter = {};
 iStep = 1;
-learningRate = 1/(decayFactor + iStep);%
+learningRate = 1/(decayFactor + iStep);
 oldRMSE = 0;
-%for iStep = 1:params.nSteps
+
 while(1)
-    newModel = model;
-    nIter = 1;
-        %Calculate future estimates
-        [nextStateValues, actions] = params.getOptimalAction(model, transformedNextStates);
-        newEstimates = samples.rewards + params.discountFactor*nextStateValues;
+    
+    %Calculate future estimates
+    [nextStateValues, actions] = params.getOptimalAction(model, transformedNextStates);
+    newEstimates = samples.rewards + params.discountFactor*nextStateValues;
 
-        %[model.C model.V']'wGrad = diag(mean(diffFromCenter{iModel}.*biasedDiffs),0);
-        %Calculate current-state gaussian-contributions
-        currentEstimates = zeros(samples.nSamples, 1);
-        for iModel = 1:model.M
-            diffFromCenter{iModel} = estNextStates - repmat(model.C(iModel, :), samples.nSamples, 1);
-            exponents = diag(diffFromCenter{iModel} * model.W(:,:,iModel) *diffFromCenter{iModel}');
-            contributions(:, iModel) = exp(-exponents);
-            currentEstimates = currentEstimates + model.V(iModel) * contributions(:, iModel);
-        end
-        errors = repmat(newEstimates - currentEstimates, 1, model.M);
-        rmse = utils.rmse(newEstimates, currentEstimates);
-        contributionError = contributions .* errors;
+    %Calculate current-state gaussian-contributions
+    currentEstimates = zeros(samples.nSamples, 1);
+    for iModel = 1:model.M
+        diffFromCenter{iModel} = estNextStates - repmat(model.C(iModel, :), samples.nSamples, 1);
+        exponents = diag(diffFromCenter{iModel} * model.W(:,:,iModel) *diffFromCenter{iModel}');
+        contributions(:, iModel) = exp(-exponents);
+        currentEstimates = currentEstimates + model.V(iModel) * contributions(:, iModel);
+    end
+    errors = repmat(newEstimates - currentEstimates, 1, model.M);
+    rmse = utils.rmse(newEstimates, currentEstimates);
+    contributionError = contributions .* errors;
 
-        vGrad = mean(contributionError);
-        model.V = model.V + learningRate * 2 * vGrad;
+    vGrad = mean(contributionError);
+    model.V = model.V + learningRate * 2 * vGrad;
 
-        for iModel = 1:model.M
-            biasedDiffs = model.V(iModel)*repmat(contributionError(:,iModel),1,samples.stateDim) .*...
-                (diffFromCenter{iModel}*model.W(:,:,iModel));
-            cGrad = mean(biasedDiffs);
-            model.C(iModel, :) = model.C(iModel, :) + learningRate * 4 * cGrad;
-            %wGrad = (diffFromCenter{iModel}'*biasedDiffs).*eye(samples.stateDim)/samples.nSamples;
-            wGrad = diag(mean(diffFromCenter{iModel}.*biasedDiffs),0);
-            model.W(:,:,iModel) = abs(model.W(:,:,iModel) + 2*learningRate * wGrad);
-        end
+    for iModel = 1:model.M
+        biasedDiffs = model.V(iModel)*repmat(contributionError(:,iModel),1,samples.stateDim) .*...
+            (diffFromCenter{iModel}*model.W(:,:,iModel));
+        cGrad = mean(biasedDiffs);
+        model.C(iModel, :) = model.C(iModel, :) + learningRate * 4 * cGrad;
         
-    [iStep abs(oldRMSE - rmse) oldRMSE]
+        wGrad = diag(mean(diffFromCenter{iModel}.*biasedDiffs),0);
+        model.W(:,:,iModel) = abs(model.W(:,:,iModel) + 2*learningRate * wGrad);
+    end
+        
+    [iStep abs(oldRMSE - rmse) oldRMSE learningRate]
     if(abs(oldRMSE - rmse) < 0.0001)
-        [nIter rmse];
         break;
     end
     learningRate = 1/(decayFactor + iStep);%
     oldRMSE = rmse;
     iStep = iStep + 1;
+    %ezcontourf(@(t,td)CartPole2.getOptimalActionsQF(model,CartPole2.getStateTransformations([t,td])),[0,2*pi,-10,10]);
+    %hold on;
+    scatter(acos(model.C(:,1)),model.C(:,2),1000*abs(model.V'));
+    hold on;
+    scatter(2*pi-acos(model.C(:,1)),model.C(:,2),1000*abs(model.V'));
+    drawnow;
+    hold off;
+    fprintf(1,'Plotted.\n');
+    %k=waitforbuttonpress;
+    
 end
 
 
+%[x,vel,V,A] = CartPole2.plotVCartPole(model);
+%surf(vel,x,V);
+%k = waitforbuttonpress;
 
 
 

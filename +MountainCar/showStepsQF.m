@@ -2,11 +2,11 @@ function showStepsQF(model)
 global xMean xMax xMin;
 options = optimset('Display','notify','GradObj','Off','LargeScale','Off');
 
-while(true)
+%while(true)
     clc;
     h=0;
     %state=[(rand(1,1)-0.5)*(xMax-xMin) + xMean 0];
-    state=[-acos(0)/3 0];
+    state=[-0.4 0];
     while(true) 
         if(MountainCar.isGoalState(state)==1)  
             fprintf(1,'\n\nGoal State Reached.\n'); 
@@ -48,4 +48,4 @@ while(true)
     if(button==3)
         break
     end
-end
+%end
