@@ -7,7 +7,7 @@ Args:
 %}
 
 t = (cos(state(1,1)));
-tdot = abs(state(1,1));
+tdot = abs(state(1,2));
 
 %Difficult version: x-position at center!
-out = (t >= 0.99) && tdot<0.05;
+out = (t >= 0.99);% && tdot<0.05;

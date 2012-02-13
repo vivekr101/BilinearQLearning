@@ -15,6 +15,7 @@ Returns:
 global Force_Mag;
 
 nStates = size(states,1);
+
 optimalActions = zeros(nStates, model.actionDim);
 nextStateValues = zeros(nStates, 1);
 
@@ -22,15 +23,12 @@ for i = 1:nStates
     optfun = CartPole2.findQValue(model, states(i, :));
     [x,v] = fminbnd(@(a) -1*optfun(a), -Force_Mag, Force_Mag);
     optimalActions(i,:) = x;
-    nextStateValues(i,:) = v;
+    nextStateValues(i,:) = -v;
 end
 
-%{
 
+%{
 estNextStates = zeros(nStates, model.stateDim, 3);
-estNextStates(:, :, 1) = [states -Force_Mag*ones(nStates, 1) ones(nStates, 1)]*model.T;
-estNextStates(:, :, 2) = [states zeros(nStates, 1) ones(nStates, 1)]*model.T;
-estNextStates(:, :, 3) = [states Force_Mag*ones(nStates, 1) ones(nStates, 1)]*model.T;
 modelCenters = zeros(nStates, model.stateDim, model.M);
 qValues = zeros(nStates, 3);
 
@@ -39,9 +37,11 @@ for iModel = 1:model.M
 end
 
 for iAction = 1:3
+    inps = [states (iAction-2)*Force_Mag*ones(nStates, 1) ones(nStates, 1)];
     for iModel = 1:model.M
+        estNextStates(:, :, iAction) = inps*model.T(:,:,iModel);
         diffsFromCenter = estNextStates(:, :, iAction) - modelCenters(:, :, iModel);
-        exponents = diag(diffsFromCenter * model.Winv{iModel} * diffsFromCenter');
+        exponents = diag(diffsFromCenter * model.W(:,:,iModel) * diffsFromCenter');
         qValues(:, iAction) = qValues(:, iAction) + model.V(iModel)*exp(-exponents);
     end
 end

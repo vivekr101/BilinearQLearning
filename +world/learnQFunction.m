@@ -68,7 +68,7 @@ transformedNextStates = params.getStateTransformations(samples.nextStates);
 transformedActions = params.getActionTransformations(samples.actions);
 
 %1a. Get the transfer matrix
-inputs = [transformedStates transformedActions ones(samples.nSamples, 1)];
+inputs = [transformedStates transformedActions.*transformedStates(:,5) ones(samples.nSamples, 1)];
 if(createNewModel==1)
     T = inputs \ samples.nextStates;
 end
@@ -86,20 +86,23 @@ if(createNewModel==1)
     tdVals = tdVals(2:end-1)';
     tVals = linspace(-1,1,5)';
     model.C = [repmat(tVals,3,1), repmat(tdVals, 5, 1)];
-    %}
+    
     minVals = [min(cos(samples.states(:,1))) min(samples.states(:,2))];
     maxVals = [max(cos(samples.states(:,1))) max(samples.states(:,2))];
     model.C = repmat(minVals,model.M,1) ...
         + rand(model.M, samples.stateDim) .* repmat(maxVals-minVals, model.M, 1);
+    %}
+    model.C = [(rand(model.M,1)-0.5)*2, 4*randn(model.M,1)];
     model.C(model.M, :) = [1 0];
+    model.C(model.M-1,:) = [-1 0];
     
     model.T = zeros(size(transformedStates,2) + samples.actionDim + 1, samples.stateDim, model.M);
     
     for iModel = 1:model.M
-        model.W(:, :, iModel) = eye(samples.stateDim)*0.01;
+        model.W(:, :, iModel) = eye(samples.stateDim)*0.1;
         model.T(:, :, iModel) = T;
     end
-    model.V = 0*ones(1, model.M);
+    model.V = 1*ones(1, model.M);
     model.stateDim = samples.stateDim;
     model.actionDim = samples.actionDim;
 end
@@ -107,7 +110,7 @@ contributions = zeros(samples.nSamples, model.M);
 
 model.C
 
-decayFactor = 100;
+decayFactor = 500;
 iStep = 1;
 learningRate = 1/(decayFactor + iStep);
 oldRMSE = 0;
@@ -117,16 +120,16 @@ h = figure;
 status = '';
 
 while(1)
-    scatter(acos(model.C(:,1)),model.C(:,2),1+1000*abs(model.V'));
+    scatter(acos(model.C(:,1)),model.C(:,2),100*sum(sum(model.W.^2,1),2),100+abs(model.V'));
     hold on;
-    scatter(2*pi-acos(model.C(:,1)),model.C(:,2),1+1000*abs(model.V'));
+    scatter(2*pi-acos(model.C(:,1)),model.C(:,2),100*sum(sum(model.W.^2,1),2),100+abs(model.V'));
     drawnow;
     hold off;
     
     [nextStateValues, actions] = params.getOptimalAction(model, transformedNextStates);
     newEstimates = samples.rewards + params.discountFactor*nextStateValues;
+    
     currentEstimates = zeros(samples.nSamples, 1);
-    rmse = utils.rmse(newEstimates, currentEstimates);
     
     for iModel = 1:model.M
         dFromCenter = inputs * model.T(:, :, iModel);
@@ -141,6 +144,7 @@ while(1)
         currentEstimates = currentEstimates ...
             + model.V(iModel)*contributions(:, iModel);
     end
+    rmse = utils.rmse(newEstimates, currentEstimates);
     
     errors = newEstimates - currentEstimates;
     contributionErrors = repmat(errors, 1, model.M) .* contributions;
@@ -148,20 +152,20 @@ while(1)
     for iModel = 1:model.M
         modelErrorMult = repmat(contributionErrors(:,iModel), 1, samples.stateDim)*model.V(iModel);
         %Update C
-        cGrad = mean(modelErrorMult .* biased_diffsFromCenter(:, :, iModel));
-        model.C(iModel, :) = model.C(iModel, :) - 4*learningRate*cGrad;
+        cGrad = -4 * mean(modelErrorMult .* biased_diffsFromCenter(:, :, iModel));
+        model.C(iModel, :) = model.C(iModel, :) - learningRate*cGrad;
         
         %Update W
-        wGrad = modelErrorMult ...
-            .* (diffsFromCenter(:, :, iModel).*diffsFromCenter(:, :, iModel) );
-        model.W(:, :, iModel) = model.W(:, :, iModel) ...
-            + 2*learningRate*diag(mean(wGrad));
+        wGrad = 2*mean(modelErrorMult ...
+            .* (diffsFromCenter(:, :, iModel).*diffsFromCenter(:, :, iModel) ));
+        model.W(:, :, iModel) = max(zeros(samples.stateDim),model.W(:, :, iModel) ...
+            - learningRate*diag((wGrad)));
         
         %Update T
-        tGrad = (repmat(contributionErrors(:,iModel),1,size(T,1)).*inputs)'...
+        tGrad = 4*(repmat(contributionErrors(:,iModel),1,size(T,1)).*inputs)'...
             * biased_diffsFromCenter(:, :, iModel);
         model.T(:, :, iModel) = model.T(:, :, iModel) ...
-            +2*learningRate*(tGrad/samples.nSamples);
+            - learningRate*(tGrad/samples.nSamples);
             
     end
     
@@ -169,14 +173,14 @@ while(1)
     model.V = model.V + 2*learningRate*mean(contributionErrors);
 
     fprintf(1, repmat('\b',1,size(status,2)));
-    status = sprintf('Iteration: %f, Error: %f, Change in error: %f, Learning Rate: %f',...
-        iStep, rmse, rmse-oldRMSE, learningRate);
+    status = sprintf('Iteration: %f, RMSE: %f, OldRMSE: %f, Change in error: %e, Learning Rate: %f',...
+        iStep, rmse, oldRMSE, rmse-oldRMSE, learningRate);
     fprintf(1, status);
     
-    if(abs(oldRMSE - rmse) < 0.0001)
+    if(abs(oldRMSE - rmse) < 0.0001 && iStep~=1)
         break;
     end
-    learningRate = 1/(decayFactor + iStep);%
+    learningRate = 1/(decayFactor + 2*iStep);%
     oldRMSE = rmse;
     iStep = iStep + 1;
     %{
